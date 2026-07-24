@@ -3,23 +3,34 @@ name: Claude Issue Triage
 on:
   issues:
     types: [opened, edited]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to triage'
+        required: true
+        type: string
 
 concurrency:
-  group: issue-triage-${{ github.event.issue.number }}
+  group: issue-triage-${{ github.event.inputs.issue_number || github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
   triage:
     if: |
-      github.event.sender.type != 'Bot' &&
-      (github.event.action == 'opened' || github.event.changes.body != null) &&
-      !contains(github.event.issue.body, '@claude') &&
-      !contains(github.event.issue.title, '@claude')
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.sender.type != 'Bot' &&
+        (github.event.action == 'opened' || github.event.changes.body != null) &&
+        !contains(github.event.issue.body, '@claude') &&
+        !contains(github.event.issue.title, '@claude')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
       issues: write
       id-token: write
+    env:
+      ISSUE_NUMBER: ${{ github.event.inputs.issue_number || github.event.issue.number }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,10 +44,10 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*),Read,Grep,Glob"'
           prompt: |
-            You are triaging GitHub issue #${{ github.event.issue.number }} in this repository.
+            You are triaging GitHub issue #${{ env.ISSUE_NUMBER }} in this repository.
 
             Steps:
-            1. Run `gh issue view ${{ github.event.issue.number }}` to read the current title and body.
+            1. Run `gh issue view ${{ env.ISSUE_NUMBER }}` to read the current title and body.
             2. Read `CLAUDE.md` to understand the project architecture and terminology (board model,
                `PIECES`/`rotateCW`, `collide`, `tryRotate` wall kicks, game `loop`, `clearLines`,
                `LINE_SCORES`, `dropInterval`, `ghostY`, and the COLS/ROWS/BLOCK canvas sync rule).
@@ -44,12 +55,12 @@ jobs:
                to locate the specific area affected by the issue. Do not guess line numbers or function
                behavior you have not actually verified by reading the file.
             4. Run `gh label list` to confirm the exact available labels, then apply the appropriate ones
-               with `gh issue edit ${{ github.event.issue.number }} --add-label "<label>"`.
+               with `gh issue edit ${{ env.ISSUE_NUMBER }} --add-label "<label>"`.
                - Choose ONLY from the repo's existing labels: bug, enhancement, documentation, question,
                  duplicate, invalid, "good first issue", help wanted, wontfix.
                - Never create a new label.
                - Apply at most 3 labels. If none genuinely fit, apply none.
-            5. Post exactly ONE comment via `gh issue comment ${{ github.event.issue.number }} --body "..."`
+            5. Post exactly ONE comment via `gh issue comment ${{ env.ISSUE_NUMBER }} --body "..."`
                using this template:
 
                ## 🤖 Automated diagnosis
