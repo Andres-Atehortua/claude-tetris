@@ -89,6 +89,8 @@ jobs:
             Rules:
             - Write the comment content in English; keep code identifiers, file names, and function names
               in their original form.
+            - Format the comment body as GitHub-flavored Markdown (headings, bold, inline code with
+              backticks, code fences with language tags where relevant). Do not use raw HTML.
             - If the issue is too vague to diagnose, say so explicitly under "Missing information" instead
               of speculating.
             - If this run was triggered by an edit to an issue that already has a previous triage comment
