@@ -1,0 +1,84 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    if: |
+      github.event.sender.type != 'Bot' &&
+      (github.event.action == 'opened' || github.event.changes.body != null) &&
+      !contains(github.event.issue.body, '@claude') &&
+      !contains(github.event.issue.title, '@claude')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        id: claude-triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*),Read,Grep,Glob"'
+          prompt: |
+            You are triaging GitHub issue #${{ github.event.issue.number }} in this repository.
+
+            Steps:
+            1. Run `gh issue view ${{ github.event.issue.number }}` to read the current title and body.
+            2. Read `CLAUDE.md` to understand the project architecture and terminology (board model,
+               `PIECES`/`rotateCW`, `collide`, `tryRotate` wall kicks, game `loop`, `clearLines`,
+               `LINE_SCORES`, `dropInterval`, `ghostY`, and the COLS/ROWS/BLOCK canvas sync rule).
+            3. Read the relevant source files (mainly `game.js`, also `index.html`/`style.css` if relevant)
+               to locate the specific area affected by the issue. Do not guess line numbers or function
+               behavior you have not actually verified by reading the file.
+            4. Run `gh label list` to confirm the exact available labels, then apply the appropriate ones
+               with `gh issue edit ${{ github.event.issue.number }} --add-label "<label>"`.
+               - Choose ONLY from the repo's existing labels: bug, enhancement, documentation, question,
+                 duplicate, invalid, "good first issue", help wanted, wontfix.
+               - Never create a new label.
+               - Apply at most 3 labels. If none genuinely fit, apply none.
+            5. Post exactly ONE comment via `gh issue comment ${{ github.event.issue.number }} --body "..."`
+               using this template:
+
+               ## 🤖 Automated diagnosis
+
+               **Classification:** <bug | enhancement | question | documentation>
+               **Labels applied:** <list or "none">
+
+               ### Summary
+               <1-2 sentences on what the issue reports or requests>
+
+               ### Affected code area
+               <file:line and specific functions, e.g. `game.js` `tryRotate()`>
+
+               ### Analysis
+               <why it happens / what it would involve, using CLAUDE.md terminology>
+
+               ### Proposed approach
+               <concrete implementation steps>
+
+               ### Risks / considerations
+               <e.g. wall kicks, difficulty scaling, canvas-constant sync>
+
+               ### Missing information
+               <what's needed to implement this; omit this section if nothing is missing>
+
+            Rules:
+            - Write the comment content in English; keep code identifiers, file names, and function names
+              in their original form.
+            - If the issue is too vague to diagnose, say so explicitly under "Missing information" instead
+              of speculating.
+            - If this run was triggered by an edit to an issue that already has a previous triage comment
+              from you, note in the new comment that it replaces/updates the previous diagnosis.
