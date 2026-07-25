@@ -17,6 +17,184 @@ const COLORS = [
   '#546e7a' // 9 - power-up cell base
 ];
 
+const NEON_COLORS = [
+  null,
+  '#00e5ff', // I
+  '#ffea00', // O
+  '#e040fb', // T
+  '#00ff85', // S
+  '#ff1744', // Z
+  '#448aff', // J
+  '#ff9100', // L
+  '#ffffff', // wildcard
+  '#37474f' // power-up base
+];
+
+const PASTEL_COLORS = [
+  null,
+  '#a7d8de', // I
+  '#f5e6a8', // O
+  '#d9b8e0', // T
+  '#b8ddc0', // S
+  '#eab8b8', // Z
+  '#b8cdea', // J
+  '#f0cba8', // L
+  '#f5f2ea', // wildcard
+  '#9aa5ab' // power-up base
+];
+
+const PIXEL_COLORS = [
+  null,
+  '#3fd0d8', // I
+  '#e8c23f', // O
+  '#a858a0', // T
+  '#68b070', // S
+  '#c85858', // Z
+  '#7098c8', // J
+  '#d89848', // L
+  '#d8d8d8', // wildcard
+  '#485860' // power-up base
+];
+
+const SKINS = {
+  retro: {
+    colors: COLORS,
+    draw(context, x, y, colorIndex, size, alpha, icon) {
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      // highlight
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+      if (icon) {
+        context.font = `${Math.floor(size * 0.6)}px sans-serif`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(icon, x * size + size / 2, y * size + size / 2 + 1);
+      } else if (colorIndex === WILDCARD) {
+        context.fillStyle = 'rgba(122, 162, 247, 0.8)';
+        context.font = `${Math.floor(size * 0.55)}px sans-serif`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('✦', x * size + size / 2, y * size + size / 2 + 1);
+      }
+      context.globalAlpha = 1;
+    }
+  },
+  neon: {
+    colors: NEON_COLORS,
+    draw(context, x, y, colorIndex, size, alpha, icon) {
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      context.save();
+      context.shadowColor = color;
+      context.shadowBlur = size * 0.5;
+      context.fillStyle = '#0a0a0f';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      context.strokeStyle = color;
+      context.lineWidth = 2;
+      context.strokeRect(x * size + 2, y * size + 2, size - 4, size - 4);
+      context.restore();
+      // reset shadow explicitly so it never leaks into drawGrid() or later draws
+      context.shadowBlur = 0;
+      if (icon) {
+        context.font = `${Math.floor(size * 0.6)}px sans-serif`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillStyle = color;
+        context.fillText(icon, x * size + size / 2, y * size + size / 2 + 1);
+      } else if (colorIndex === WILDCARD) {
+        context.fillStyle = color;
+        context.font = `${Math.floor(size * 0.55)}px sans-serif`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('✦', x * size + size / 2, y * size + size / 2 + 1);
+      }
+      context.globalAlpha = 1;
+      context.shadowBlur = 0;
+    }
+  },
+  pastel: {
+    colors: PASTEL_COLORS,
+    draw(context, x, y, colorIndex, size, alpha, icon) {
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      const rx = x * size + 2;
+      const ry = y * size + 2;
+      const rw = size - 4;
+      const rh = size - 4;
+      if (typeof context.roundRect === 'function') {
+        context.beginPath();
+        context.roundRect(rx, ry, rw, rh, 6);
+        context.fill();
+      } else {
+        context.fillRect(rx, ry, rw, rh);
+      }
+      context.fillStyle = 'rgba(255,255,255,0.35)';
+      context.fillRect(rx, ry, rw, 4);
+      if (icon) {
+        context.font = `${Math.floor(size * 0.6)}px sans-serif`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillStyle = '#555';
+        context.fillText(icon, x * size + size / 2, y * size + size / 2 + 1);
+      } else if (colorIndex === WILDCARD) {
+        context.fillStyle = 'rgba(140, 120, 180, 0.8)';
+        context.font = `${Math.floor(size * 0.55)}px sans-serif`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('✦', x * size + size / 2, y * size + size / 2 + 1);
+      }
+      context.globalAlpha = 1;
+    }
+  },
+  pixel: {
+    colors: PIXEL_COLORS,
+    draw(context, x, y, colorIndex, size, alpha, icon) {
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      const bx = x * size + 1;
+      const by = y * size + 1;
+      const bs = size - 2;
+      context.fillStyle = color;
+      context.fillRect(bx, by, bs, bs);
+      // dithering-style pixel texture: alternating light/dark sub-squares
+      const step = Math.max(2, Math.floor(bs / 4));
+      let toggle = false;
+      for (let sy = 0; sy < bs; sy += step) {
+        toggle = !toggle;
+        for (let sx = 0; sx < bs; sx += step) {
+          if (toggle) {
+            context.fillStyle = 'rgba(255,255,255,0.15)';
+          } else {
+            context.fillStyle = 'rgba(0,0,0,0.12)';
+          }
+          context.fillRect(bx + sx, by + sy, step, step);
+          toggle = !toggle;
+        }
+      }
+      if (icon) {
+        context.font = `${Math.floor(size * 0.6)}px sans-serif`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillStyle = '#fff';
+        context.fillText(icon, x * size + size / 2, y * size + size / 2 + 1);
+      } else if (colorIndex === WILDCARD) {
+        context.fillStyle = 'rgba(30, 30, 40, 0.85)';
+        context.font = `${Math.floor(size * 0.55)}px sans-serif`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText('✦', x * size + size / 2, y * size + size / 2 + 1);
+      }
+      context.globalAlpha = 1;
+    }
+  }
+};
+
+let currentSkin = 'retro'; // overridden by localStorage on load
+
 const WILDCARD = 8; // wildcard cell left behind by the Dye power-up
 const POWERUP_CELL = 9; // marker type for a power-up piece (never stored on board)
 const POWERUP_EVERY = 5; // lines needed between power-up spawns
@@ -291,26 +469,7 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha, icon) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  if (icon) {
-    context.font = `${Math.floor(size * 0.6)}px sans-serif`;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(icon, x * size + size / 2, y * size + size / 2 + 1);
-  } else if (colorIndex === WILDCARD) {
-    context.fillStyle = 'rgba(122, 162, 247, 0.8)';
-    context.font = `${Math.floor(size * 0.55)}px sans-serif`;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText('✦', x * size + size / 2, y * size + size / 2 + 1);
-  }
-  context.globalAlpha = 1;
+  SKINS[currentSkin].draw(context, x, y, colorIndex, size, alpha, icon);
 }
 
 function drawGrid() {
@@ -478,5 +637,22 @@ themeToggle.addEventListener('change', () => {
 });
 
 themeToggle.checked = document.documentElement.getAttribute('data-theme') === 'light';
+
+const skinSelect = document.getElementById('skin-select');
+
+function applySkin(skin) {
+  currentSkin = Object.prototype.hasOwnProperty.call(SKINS, skin) ? skin : 'retro';
+  document.documentElement.setAttribute('data-skin', currentSkin);
+  localStorage.setItem('tetris-skin', currentSkin);
+  if (skinSelect) skinSelect.value = currentSkin;
+  if (typeof current !== 'undefined' && board) draw();
+  if (typeof next !== 'undefined' && next) drawNext();
+}
+
+skinSelect.addEventListener('change', () => {
+  applySkin(skinSelect.value);
+});
+
+applySkin(document.documentElement.getAttribute('data-skin'));
 
 init();
