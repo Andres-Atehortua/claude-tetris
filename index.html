@@ -5,10 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tetris</title>
   <link rel="stylesheet" href="style.css" />
+  <script>
+    (function () {
+      var stored = localStorage.getItem('tetris-theme');
+      var theme = (stored === 'light' || stored === 'dark') ? stored : 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
 </head>
 <body>
   <div class="wrapper">
-    <h1 class="game-title">TETRIS</h1>
+    <div class="top-bar">
+      <span class="top-bar-spacer" aria-hidden="true"></span>
+      <h1 class="game-title">TETRIS</h1>
+      <label class="theme-switch" for="theme-toggle" title="Cambiar entre modo oscuro y claro">
+        <input type="checkbox" id="theme-toggle" aria-label="Alternar modo claro u oscuro" />
+        <span class="theme-switch-track">
+          <span class="theme-switch-icon theme-switch-icon-moon" aria-hidden="true">&#9789;</span>
+          <span class="theme-switch-icon theme-switch-icon-sun" aria-hidden="true">&#9728;</span>
+          <span class="theme-switch-thumb"></span>
+        </span>
+      </label>
+    </div>
     <div class="game-container">
       <canvas id="board" width="300" height="600"></canvas>
 
