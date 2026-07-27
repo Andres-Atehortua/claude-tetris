@@ -79,7 +79,15 @@ const powerupEl = document.getElementById('powerup-status');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
+const overlayHighscoreForm = document.getElementById('overlay-highscore-form');
+const overlayHighscoreTable = document.getElementById('overlay-highscore-table');
 const restartBtn = document.getElementById('restart-btn');
+const startScreen = document.getElementById('start-screen');
+const startHighscoreTable = document.getElementById('start-highscore-table');
+const startBestComboEl = document.getElementById('start-best-combo');
+const startMaxLinesEl = document.getElementById('start-max-lines');
+const playBtn = document.getElementById('play-btn');
+const resetScoresBtn = document.getElementById('reset-scores-btn');
 const pauseMenu = document.getElementById('pause-menu');
 const resumeBtn = document.getElementById('resume-btn');
 const pauseRestartBtn = document.getElementById('pause-restart-btn');
@@ -87,8 +95,12 @@ const showControlsBtn = document.getElementById('show-controls-btn');
 const pauseControlsPanel = document.getElementById('pause-controls-panel');
 const startLevelSelect = document.getElementById('start-level-select');
 
+const HIGHSCORES_KEY = 'tetris-highscores';
+const MAX_HIGHSCORES = 5;
+
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let powerupPending, powerupsSeen, freezeUntil, pauseStart;
+let combo, maxCombo;
 let startLevel = Number(localStorage.getItem('tetris-start-level')) || 1; // level applied on the next init()
 
 function createBoard() {
@@ -164,12 +176,15 @@ function clearLines() {
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    combo++;
+    maxCombo = Math.max(maxCombo, combo);
     if (Math.floor(lines / POWERUP_EVERY) > powerupsSeen) {
       powerupsSeen = Math.floor(lines / POWERUP_EVERY);
       powerupPending = true;
     }
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -201,7 +216,8 @@ function lockPiece() {
   } else {
     merge();
   }
-  clearLines();
+  const cleared = clearLines();
+  if (!cleared) combo = 0;
   spawn();
 }
 
@@ -370,16 +386,143 @@ function drawNext() {
     for (let c = 0; c < shape[r].length; c++) drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB, 1, icon);
 }
 
+// ---- Highscores persistence ----
+
+function loadHighscores() {
+  try {
+    const raw = localStorage.getItem(HIGHSCORES_KEY);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHighscore(entry) {
+  const list = loadHighscores();
+  list.push(entry);
+  list.sort((a, b) => b.score - a.score);
+  const truncated = list.slice(0, MAX_HIGHSCORES);
+  localStorage.setItem(HIGHSCORES_KEY, JSON.stringify(truncated));
+  return truncated;
+}
+
+function getGlobalStats() {
+  const list = loadHighscores();
+  let bestCombo = 0;
+  let maxLines = 0;
+  for (const entry of list) {
+    if (entry.maxCombo > bestCombo) bestCombo = entry.maxCombo;
+    if (entry.lines > maxLines) maxLines = entry.lines;
+  }
+  return { bestCombo, maxLines };
+}
+
+// Two entries are "the same" for highlight purposes if their fields match.
+// (Entries read back via loadHighscores() are always freshly JSON.parse'd,
+// so they are never the same object reference as an in-memory entry.)
+function sameEntry(a, b) {
+  if (!a || !b) return false;
+  return (
+    a.name === b.name &&
+    a.score === b.score &&
+    a.lines === b.lines &&
+    a.level === b.level &&
+    a.maxCombo === b.maxCombo &&
+    a.date === b.date
+  );
+}
+
+// Renders a top-5 table into `container`. `highlightEntry`, when it matches
+// one of the entries in the stored list (see sameEntry), gets a highlight class.
+function renderHighscoreTable(container, highlightEntry) {
+  container.textContent = '';
+  const list = loadHighscores();
+  if (!list.length) {
+    const empty = document.createElement('p');
+    empty.className = 'highscore-empty';
+    empty.textContent = 'Sin records aún';
+    container.appendChild(empty);
+    return;
+  }
+  const table = document.createElement('table');
+  table.className = 'highscore-table';
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  ['#', 'Nombre', 'Puntos', 'Líneas', 'Nivel', 'Combo'].forEach((label) => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  list.forEach((entry, i) => {
+    const row = document.createElement('tr');
+    if (sameEntry(entry, highlightEntry)) row.classList.add('highscore-highlight');
+    const cells = [i + 1, entry.name, entry.score.toLocaleString(), entry.lines, entry.level, entry.maxCombo];
+    cells.forEach((value) => {
+      const td = document.createElement('td');
+      td.textContent = value; // textContent only: never render user input as HTML
+      row.appendChild(td);
+    });
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+function refreshStartScreen() {
+  renderHighscoreTable(startHighscoreTable, null);
+  const { bestCombo, maxLines } = getGlobalStats();
+  startBestComboEl.textContent = bestCombo;
+  startMaxLinesEl.textContent = maxLines;
+}
+
+// Renders the game-over highscore panel: the top-5 table, plus (if the just
+// finished run qualifies and hasn't been saved yet) a name-capture form.
+function renderGameOverHighscores(savedEntry) {
+  overlayHighscoreForm.textContent = '';
+  if (savedEntry) {
+    renderHighscoreTable(overlayHighscoreTable, savedEntry);
+    return;
+  }
+  const list = loadHighscores();
+  const qualifies = list.length < MAX_HIGHSCORES || score > list[list.length - 1].score;
+  if (qualifies) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 12;
+    input.placeholder = 'Tu nombre';
+    input.className = 'highscore-input';
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.textContent = 'Guardar';
+    saveBtn.className = 'highscore-save-btn';
+    saveBtn.addEventListener('click', () => {
+      const name = input.value.trim() || 'Anónimo';
+      const entry = { name, score, lines, level, maxCombo, date: new Date().toISOString() };
+      saveHighscore(entry);
+      renderGameOverHighscores(entry);
+    });
+    overlayHighscoreForm.appendChild(input);
+    overlayHighscoreForm.appendChild(saveBtn);
+  }
+  renderHighscoreTable(overlayHighscoreTable, null);
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
-  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  overlayScore.textContent = `Puntuación: ${score.toLocaleString()} | Líneas: ${lines} | Combo máximo: ${maxCombo}`;
+  renderGameOverHighscores(null);
   overlay.classList.remove('hidden');
 }
 
 function togglePause() {
-  if (gameOver) return;
+  if (!current || gameOver) return;
   paused = !paused;
   if (!paused) {
     if (freezeUntil > 0) freezeUntil += performance.now() - pauseStart;
@@ -432,6 +575,8 @@ function init() {
   powerupsSeen = 0;
   freezeUntil = 0;
   pauseStart = 0;
+  combo = 0;
+  maxCombo = 0;
   next = randomPiece();
   spawn();
   updateHUD();
@@ -446,7 +591,7 @@ document.addEventListener('keydown', (e) => {
     togglePause();
     return;
   }
-  if (paused || gameOver) return;
+  if (!current || paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -507,4 +652,17 @@ themeToggle.addEventListener('change', () => {
 
 themeToggle.checked = document.documentElement.getAttribute('data-theme') === 'light';
 
-init();
+playBtn.addEventListener('click', () => {
+  startScreen.classList.add('hidden');
+  init();
+});
+
+resetScoresBtn.addEventListener('click', () => {
+  if (confirm('¿Seguro que querés borrar los records?')) {
+    localStorage.removeItem(HIGHSCORES_KEY);
+    refreshStartScreen();
+  }
+});
+
+// The game only starts once the player clicks JUGAR on the start screen.
+refreshStartScreen();
