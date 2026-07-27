@@ -11,6 +11,12 @@
       var theme = (stored === 'light' || stored === 'dark') ? stored : 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
+    (function () {
+      var validSkins = ['retro', 'neon', 'pastel', 'pixel'];
+      var stored = localStorage.getItem('tetris-skin');
+      var skin = validSkins.indexOf(stored) !== -1 ? stored : 'retro';
+      document.documentElement.setAttribute('data-skin', skin);
+    })();
   </script>
 </head>
 <body>
@@ -26,6 +32,12 @@
           <span class="theme-switch-thumb"></span>
         </span>
       </label>
+      <select id="skin-select" class="skin-select" title="Cambiar apariencia de las piezas" aria-label="Elegir skin visual">
+        <option value="retro">Retro</option>
+        <option value="neon">Neon</option>
+        <option value="pastel">Pastel</option>
+        <option value="pixel">Pixel Art</option>
+      </select>
     </div>
     <div class="game-container">
       <canvas id="board" width="300" height="600"></canvas>

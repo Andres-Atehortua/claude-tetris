@@ -307,6 +307,48 @@ kbd {
   outline-offset: 2px;
 }
 
+/* ---- Skins ---- */
+[data-skin="neon"] {
+  --board-bg: #05050a;
+  --board-border: #1a1a2a;
+  --grid-color: #12121e;
+}
+
+[data-theme="dark"][data-skin="pastel"] {
+  --board-bg: #22222e;
+  --grid-color: #2c2c3a;
+}
+
+[data-theme="light"][data-skin="pastel"] {
+  --board-bg: #fdfcf8;
+  --grid-color: #ece7da;
+}
+
+[data-skin="pixel"] {
+  --grid-color: #33333f;
+}
+
+[data-theme="light"][data-skin="pixel"] {
+  --grid-color: #d5d5e0;
+}
+
+.skin-select {
+  flex-shrink: 0;
+  background: var(--switch-track-bg);
+  color: var(--text);
+  border: 1px solid var(--switch-track-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.skin-select:focus-visible {
+  outline: 2px solid var(--title-color);
+  outline-offset: 2px;
+}
+
 /* ---- Highscores & start screen ---- */
 
 .start-title {
