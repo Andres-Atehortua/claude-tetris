@@ -336,8 +336,55 @@ kbd {
   color: var(--value-color);
 }
 
+/* ---- Pause menu ---- */
+.pause-menu-box {
+  min-width: 240px;
+  padding: 12px;
+}
+
+#pause-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--overlay-score-color);
+}
+
+.pause-menu-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pause-menu-field label {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--label-color);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pause-menu-field select {
+  background: var(--kbd-bg);
+  color: var(--text);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pause-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
 #play-btn,
-#reset-scores-btn {
+#reset-scores-btn,
+.pause-menu-actions button {
   background: var(--btn-bg);
   color: var(--btn-color);
   border: none;
@@ -351,7 +398,8 @@ kbd {
 }
 
 #play-btn:hover,
-#reset-scores-btn:hover {
+#reset-scores-btn:hover,
+.pause-menu-actions button:hover {
   background: var(--btn-hover-bg);
 }
 
@@ -432,4 +480,37 @@ kbd {
 
 .highscore-save-btn:hover {
   background: var(--btn-hover-bg);
+}
+
+#pause-controls-panel {
+  border-top: 1px solid var(--board-border);
+  padding-top: 12px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+#pause-controls-panel.hidden {
+  display: none;
+}
+
+#pause-controls-panel .label {
+  display: block;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+#pause-controls-panel ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#pause-controls-panel li {
+  font-size: 12px;
+  color: var(--controls-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
